@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>نظام تسجيل الأنشطة + تقارير PDF</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- مكتبة html2pdf لتحويل HTML إلى PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        /* بطاقة النموذج */
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 28px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            transition: all 0.3s;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        h2 i { color: #667eea; }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .form-group { margin-bottom: 5px; }
+        .full-width { grid-column: span 2; }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+            font-size: 15px;
+        }
+        label i {
+            margin-left: 8px;
+            color: #667eea;
+            width: 20px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.3s;
+            background-color: #f9f9f9;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #667eea;
+            background-color: #fff;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+        .location-btn, .fetch-btn, .generate-pdf-btn {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: #1a3b2e;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+        .fetch-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            margin-bottom: 15px;
+        }
+        .generate-pdf-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: #1e3c72;
+            margin-top: 10px;
+        }
+        .location-btn:hover, .fetch-btn:hover, .generate-pdf-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        button[type="submit"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 25px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            transition: 0.2s;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .message {
+            margin-top: 20px;
+            padding: 12px 20px;
+            border-radius: 50px;
+            display: none;
+            text-align: center;
+            font-weight: 500;
+        }
+        .success { background-color: #d4edda; color: #155724; display: block; }
+        .error { background-color: #f8d7da; color: #721c24; display: block; }
+        .note, .location-note {
+            font-size: 13px;
+            color: #2c3e50;
+            margin-top: 5px;
+            background: #f0f4f8;
+            padding: 8px 12px;
+            border-radius: 30px;
+        }
+        .image-group {
+            grid-column: span 2;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        .image-upload {
+            border: 2px dashed #ccc;
+            border-radius: 16px;
+            padding: 15px;
+            text-align: center;
+            background: #fafafa;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .image-upload:hover { border-color: #667eea; }
+        .image-preview { max-width: 100%; max-height: 100px; margin-top: 10px; border-radius: 8px; display: none; }
+        .record-selector {
+            background: #f8f9ff;
+            border-radius: 20px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .record-selector select {
+            background: white;
+            margin-top: 8px;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        hr { margin: 15px 0; border-color: #e0e0e0; }
+        @media (max-width: 600px) {
+            .form-grid, .image-group { grid-template-columns: 1fr; }
+            .full-width { grid-column: span 1; }
+        }
+        /* أنماط تقرير PDF المخفي */
+        #pdfReportContainer {
+            direction: rtl;
+            background: white;
+            padding: 30px;
+            font-family: 'Tajawal', 'Segoe UI', sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .pdf-header {
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .pdf-header h3 { color: #2c3e50; font-size: 24px; }
+        .pdf-fields-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        .pdf-field {
+            background: #f8fafc;
+            padding: 10px 15px;
+            border-radius: 14px;
+            border-right: 4px solid #667eea;
+        }
+        .pdf-field strong { color: #1e293b; font-size: 14px; display: block; margin-bottom: 5px; }
+        .pdf-field span { color: #0f172a; font-weight: 500; }
+        .images-title { font-size: 18px; margin: 20px 0 15px 0; color: #2c3e50; font-weight: bold; border-right: 5px solid #667eea; padding-right: 12px; }
+        .pdf-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: flex-start;
+            margin-top: 10px;
+        }
+        .pdf-image-card {
+            text-align: center;
+            background: #f1f5f9;
+            border-radius: 16px;
+            padding: 10px;
+            width: 5cm;      /* 5×5 حجم الصورة المطلوب */
+        }
+        .pdf-image-card .img-label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #334155;
+            font-size: 14px;
+        }
+        .pdf-image-card img {
+            width: 5cm;
+            height: 5cm;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .no-image {
+            width: 5cm;
+            height: 5cm;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            color: #64748b;
+            font-size: 12px;
+        }
+        .footer-pdf { margin-top: 25px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- بطاقة نموذج التسجيل (الأصلي) -->
+    <div class="card">
+        <h2><i class="fas fa-clipboard-list"></i> تسجيل النشاط التجاري</h2>
+        <form id="dataForm">
+            <div class="form-grid">
+                <div class="form-group meter-group">
+                    <label><i class="fas fa-tachometer-alt"></i> رقم العداد</label>
+                    <input type="text" id="meterNumber" name="meterNumber" placeholder="أدخل رقم العداد إن وجد">
+                    <div class="note"><i class="fas fa-info-circle"></i> إذا لم يكن موجوداً اتركه فارغاً</div>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-tags"></i> التصنيف الرئيسي</label>
+                    <select id="mainCategory" name="mainCategory" required><option value="">-- اختر التصنيف الرئيسي --</option></select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-tag"></i> التصنيف الفرعي</label>
+                    <select id="subcategory" name="subcategory" required><option value="">-- اختر التصنيف الرئيسي أولاً --</option></select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-user-tie"></i> نوع العميل</label>
+                    <select id="customerType" name="customerType" required>
+                        <option value="">-- اختر نوع العميل --</option>
+                        <option value="سكنى">سكنى</option><option value="حكومى">حكومى</option>
+                        <option value="تجارى">تجارى</option><option value="تجارى سكنى">تجارى سكنى</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-file-alt"></i> رخصة النشاط التجاري</label>
+                    <input type="text" id="license" name="license" placeholder="رقم الترخيص">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> الميداني</label>
+                    <select id="fieldOfficer" name="fieldOfficer" required>
+                        <option value="">-- اختر الميداني --</option>
+                        <option value="ناصر الشهيل">ناصر الشهيل</option><option value="سعود الشقير">سعود الشقير</option>
+                        <option value="فريح الرشيدي">فريح الرشيدي</option><option value="احمد السويدي">احمد السويدي</option>
+                        <option value="مفلح الشمري">مفلح الشمري</option><option value="علي الرشيدان">علي الرشيدان</option>
+                    </select>
+                </div>
+                <div class="form-group"><label><i class="fas fa-map-pin"></i> خط العرض</label><input type="text" id="latitude" name="latitude" readonly required></div>
+                <div class="form-group"><label><i class="fas fa-map-pin"></i> خط الطول</label><input type="text" id="longitude" name="longitude" readonly required></div>
+                <div class="form-group full-width">
+                    <button type="button" class="location-btn" id="getLocationBtn"><i class="fas fa-location-dot"></i> جلب الموقع الحالي (دقة <10م)</button>
+                    <div class="location-note" id="locationStatus"><i class="fas fa-info-circle"></i> لم يتم تحديد الموقع بعد.</div>
+                </div>
+                <div class="image-group">
+                    <div class="image-upload" onclick="document.getElementById('image1').click()"><i class="fas fa-camera"></i><span>الصورة 1</span><input type="file" id="image1" accept="image/*" capture="environment"><img class="image-preview" id="preview1"><div class="image-filename" id="filename1"></div></div>
+                    <div class="image-upload" onclick="document.getElementById('image2').click()"><i class="fas fa-camera"></i><span>الصورة 2</span><input type="file" id="image2" accept="image/*" capture="environment"><img class="image-preview" id="preview2"><div class="image-filename" id="filename2"></div></div>
+                    <div class="image-upload" onclick="document.getElementById('image3').click()"><i class="fas fa-camera"></i><span>الصورة 3</span><input type="file" id="image3" accept="image/*" capture="environment"><img class="image-preview" id="preview3"><div class="image-filename" id="filename3"></div></div>
+                </div>
+                <div class="form-group full-width"><label><i class="fas fa-pen"></i> الملاحظات</label><textarea id="notes" name="notes" placeholder="أي ملاحظات إضافية..."></textarea></div>
+            </div>
+            <button type="submit" id="submitBtn"><i class="fas fa-paper-plane"></i> إرسال البيانات</button>
+        </form>
+        <div id="message" class="message"></div>
+    </div>
+
+    <!-- بطاقة جديدة: استخراج البيانات وتوليد PDF -->
+    <div class="card">
+        <h2><i class="fas fa-file-pdf"></i> استخراج تقرير PDF من البيانات المسجلة</h2>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+            <button type="button" id="fetchRecordsBtn" class="fetch-btn"><i class="fas fa-database"></i> جلب البيانات من جوجل شيت</button>
+        </div>
+        <div id="recordsPanel" style="display: none;">
+            <div class="record-selector">
+                <label><i class="fas fa-list-ul"></i> اختر السجل المراد تحويله إلى PDF:</label>
+                <select id="recordSelect"></select>
+                <button type="button" id="generatePdfBtn" class="generate-pdf-btn"><i class="fas fa-file-pdf"></i> إنشاء PDF (بالصور 5×5)</button>
+            </div>
+        </div>
+        <div id="fetchStatus" class="note" style="margin-top: 10px; text-align: center;"></div>
+    </div>
+</div>
+
+<!-- حاوية مخفية لتوليد PDF (لن تظهر للمستخدم) -->
+<div id="pdfReportContainer" style="display: none;"></div>
+
+<script>
+    (function() {
+        // -------------------- إعدادات ثابتة --------------------
+        const IMGBB_API_KEY = '943880b0a24534cdb564d3ad6ea8f3a8';
+        // رابط تطبيق Google Apps Script (نفس الرابط المستخدم في الإرسال)
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBn09wyq9SXbNQc_E7M4153bdEqwljVo7TXiz8YBGfmxYsq0JonyhW_sa_YQPd6hWODA/exec';
+
+        // -------------------- التصنيفات (للنموذج الأصلي) --------------------
+        const categories = {
+            "السياحة والضيافة والترفيه والتسلية": ["الأندية الرياضية ( كرة قدم - بادل )","الفنادق والمنتجعات","مجمّعات شقق للإيجار","المطاعم والكوفيهات ( الشاي - القهوة )"],
+            "خدمات الرعاية الصحية": ["المستشفيات والمستوصفات","عيادات التجميل"],
+            "الخدمات التعليمية": ["المدارس - والجامعات"],
+            "التجميل ومستحضراته": ["الصالون النسائية والصالونات الرجالية","مراكز الاسترخاء ( مساج )"],
+            "القطاع الزراعي / الحدائق / المشاتل / الحيوانات": ["القطاع الزراعي / ري الحدائق / المشاتل","تربية الحيوانات / بيع الحيوانات"],
+            "قطاع الأطعمة": ["الملاحم","تصنيع الأغذية ( مثل اللحوم ومنتجات الألبان - الأطعمة المعلبة والمجمدة )","المسالخ","مصانع الثلج"],
+            "خدمات التنظيف": ["غسل المركبات","مغاسل الملابس"],
+            "قطاع السيارات": ["ورش تصليح السيارات"],
+            "صناعة المنسوجات": ["مصانع الخشب ( الكنبات والاثاث )"]
+        };
+        const mainCatSelect = document.getElementById('mainCategory');
+        for (let cat in categories) { let opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; mainCatSelect.appendChild(opt); }
+        const subCatSelect = document.getElementById('subcategory');
+        mainCatSelect.addEventListener('change', function() {
+            const selected = this.value;
+            subCatSelect.innerHTML = '';
+            if (selected && categories[selected]) {
+                subCatSelect.appendChild(new Option('-- اختر التصنيف الفرعي --', ''));
+                categories[selected].forEach(sub => subCatSelect.appendChild(new Option(sub, sub)));
+            } else { subCatSelect.appendChild(new Option('-- اختر التصنيف الرئيسي أولاً --', '')); }
+        });
+
+        // -------------------- معاينة الصور --------------------
+        function setupPreview(imgId, previewId, filenameId) {
+            const input = document.getElementById(imgId);
+            const preview = document.getElementById(previewId);
+            const filenameDiv = document.getElementById(filenameId);
+            input.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    filenameDiv.textContent = this.files[0].name;
+                    const reader = new FileReader();
+                    reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block'; };
+                    reader.readAsDataURL(this.files[0]);
+                } else { preview.style.display = 'none'; filenameDiv.textContent = ''; }
+            });
+        }
+        setupPreview('image1', 'preview1', 'filename1');
+        setupPreview('image2', 'preview2', 'filename2');
+        setupPreview('image3', 'preview3', 'filename3');
+
+        // -------------------- الموقع الجغرافي --------------------
+        const latInput = document.getElementById('latitude'), lngInput = document.getElementById('longitude'), locStatus = document.getElementById('locationStatus');
+        document.getElementById('getLocationBtn').addEventListener('click', () => {
+            if (!navigator.geolocation) { locStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> المتصفح لا يدعم تحديد الموقع.'; return; }
+            locStatus.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> جاري الحصول على الموقع...';
+            navigator.geolocation.getCurrentPosition(pos => {
+                latInput.value = pos.coords.latitude.toFixed(6);
+                lngInput.value = pos.coords.longitude.toFixed(6);
+                let acc = pos.coords.accuracy;
+                if (acc <= 10) locStatus.innerHTML = `<i class="fas fa-check-circle" style="color:#28a745;"></i> دقة ${acc.toFixed(1)} متر (أقل من 10م)`;
+                else locStatus.innerHTML = `<i class="fas fa-exclamation-circle" style="color:#ffc107;"></i> دقة ${acc.toFixed(1)} متر`;
+            }, err => {
+                let msg = err.code === 1 ? 'تم رفض الإذن' : (err.code === 2 ? 'الموقع غير متوفر' : 'انتهت المهلة');
+                locStatus.innerHTML = `<i class="fas fa-times-circle" style="color:#dc3545;"></i> ${msg}`;
+            }, { enableHighAccuracy: true, timeout: 10000 });
+        });
+
+        // -------------------- رفع الصور إلى ImgBB (للنموذج) --------------------
+        async function uploadImage(file) {
+            const fd = new FormData(); fd.append('image', file);
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: fd });
+            if (!res.ok) throw new Error('فشل رفع الصورة');
+            const data = await res.json();
+            return data.data.url;
+        }
+
+        // -------------------- إرسال النموذج (POST) --------------------
+        const form = document.getElementById('dataForm'), msgDiv = document.getElementById('message'), submitBtn = document.getElementById('submitBtn');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            msgDiv.style.display = 'none';
+            const mainCat = document.getElementById('mainCategory').value, subCat = document.getElementById('subcategory').value;
+            const custType = document.getElementById('customerType').value, officer = document.getElementById('fieldOfficer').value;
+            const lat = latInput.value, lng = lngInput.value;
+            if (!mainCat || !subCat || !custType || !officer) return showMessage('الرجاء إكمال الحقول الأساسية (التصنيفات، نوع العميل، الميداني)', 'error');
+            if (!lat || !lng) return showMessage('يرجى تحديد الموقع باستخدام زر جلب الموقع', 'error');
+            submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> جاري الرفع...';
+            const images = [document.getElementById('image1'), document.getElementById('image2'), document.getElementById('image3')];
+            let urls = await Promise.all(images.map(async inp => { if (inp.files.length) try { return await uploadImage(inp.files[0]); } catch(e) { return ''; } else return ''; }));
+            const payload = {
+                meterNumber: document.getElementById('meterNumber').value, mainCategory: mainCat, subcategory: subCat,
+                customerType: custType, license: document.getElementById('license').value, fieldOfficer: officer,
+                latitude: lat, longitude: lng, notes: document.getElementById('notes').value,
+                image1: urls[0], image2: urls[1], image3: urls[2]
+            };
+            try {
+                const response = await fetch(SCRIPT_URL, { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+                const result = await response.json();
+                if (result.result === 'success') {
+                    showMessage('✅ تم إرسال البيانات بنجاح!', 'success');
+                    form.reset(); subCatSelect.innerHTML = '<option value="">-- اختر التصنيف الرئيسي أولاً --</option>';
+                    latInput.value = ''; lngInput.value = ''; locStatus.innerHTML = '<i class="fas fa-info-circle"></i> لم يتم تحديد الموقع بعد.';
+                    ['preview1','preview2','preview3'].forEach(id => { let el = document.getElementById(id); if(el) el.style.display = 'none'; });
+                    ['filename1','filename2','filename3'].forEach(id => document.getElementById(id).textContent = '');
+                } else showMessage('❌ فشل الإرسال: ' + (result.error || 'خطأ'), 'error');
+            } catch (err) { showMessage('❌ خطأ في الشبكة: ' + err.message, 'error'); }
+            finally { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال البيانات'; }
+        });
+        function showMessage(text, type) { msgDiv.textContent = text; msgDiv.className = `message ${type}`; }
+
+        // =========================== جزء PDF واسترجاع البيانات ===========================
+        let allRecords = [];     // لتخزين السجلات من الشيت
+        const fetchBtn = document.getElementById('fetchRecordsBtn');
+        const recordsPanel = document.getElementById('recordsPanel');
+        const recordSelect = document.getElementById('recordSelect');
+        const generateBtn = document.getElementById('generatePdfBtn');
+        const fetchStatusDiv = document.getElementById('fetchStatus');
+
+        // جلب البيانات من Google Sheet عبر GET (action=getData)
+        async function fetchSheetData() {
+            fetchStatusDiv.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> جاري تحميل البيانات من جوجل شيت...';
+            recordsPanel.style.display = 'none';
+            try {
+                // إضافة معامل action=getData للحصول على JSON
+                const url = `${SCRIPT_URL}?action=getData&t=${Date.now()}`;
+                const res = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data.result === 'success' && Array.isArray(data.records)) {
+                    allRecords = data.records;
+                    if (allRecords.length === 0) {
+                        fetchStatusDiv.innerHTML = '<i class="fas fa-info-circle"></i> لا توجد بيانات مسجلة حالياً. قم بإدخال بيانات أولاً.';
+                        recordsPanel.style.display = 'none';
+                        return;
+                    }
+                    // تعبئة القائمة المنسدلة
+                    recordSelect.innerHTML = '';
+                    allRecords.forEach((rec, idx) => {
+                        const option = document.createElement('option');
+                        option.value = idx;
+                        const meter = rec.meterNumber || 'بدون عداد';
+                        const date = rec.timestamp ? new Date(rec.timestamp).toLocaleString('ar') : 'تاريخ غير محدد';
+                        option.textContent = `#${idx+1} - عداد: ${meter} - ${date}`;
+                        recordSelect.appendChild(option);
+                    });
+                    recordsPanel.style.display = 'block';
+                    fetchStatusDiv.innerHTML = `<i class="fas fa-check-circle" style="color:#2ecc71;"></i> تم تحميل ${allRecords.length} سجل. اختر سجلًا وأنشئ PDF.`;
+                } else {
+                    throw new Error(data.error || 'صيغة بيانات غير متوقعة');
+                }
+            } catch (err) {
+                console.error(err);
+                fetchStatusDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> فشل جلب البيانات: ${err.message}. تأكد من نشر التطبيق (doGet) محدثاً.`;
+                recordsPanel.style.display = 'none';
+            }
+        }
+
+        // إنشاء محتوى HTML للتقرير بناءً على السجل المختار
+        function buildReportHTML(record) {
+            // أسماء الحقول بالعربية
+            const fieldsMap = [
+                { label: "رقم العداد", key: "meterNumber" }, { label: "التصنيف الرئيسي", key: "mainCategory" },
+                { label: "التصنيف الفرعي", key: "subcategory" }, { label: "نوع العميل", key: "customerType" },
+                { label: "رخصة النشاط التجاري", key: "license" }, { label: "الميداني", key: "fieldOfficer" },
+                { label: "خط العرض", key: "latitude" }, { label: "خط الطول", key: "longitude" },
+                { label: "الملاحظات", key: "notes" }, { label: "تاريخ الإرسال", key: "timestamp" }
+            ];
+            let fieldsHtml = `<div class="pdf-fields-grid">`;
+            fieldsMap.forEach(f => {
+                let value = record[f.key] || "—";
+                if (f.key === "timestamp" && value && value !== "—") {
+                    try { value = new Date(value).toLocaleString('ar-SA'); } catch(e) {}
+                }
+                fieldsHtml += `<div class="pdf-field"><strong>${f.label}</strong><span>${value}</span></div>`;
+            });
+            fieldsHtml += `</div>`;
+
+            // الصور بحجم 5×5 مع عنونة رأس العامود (الصورة 1، الصورة 2، الصورة 3)
+            const imageKeys = ['image1', 'image2', 'image3'];
+            let imagesHtml = `<div class="images-title"><i class="fas fa-images"></i> الصور المرفقة</div><div class="pdf-images">`;
+            imageKeys.forEach((key, idx) => {
+                const imgUrl = record[key];
+                const columnHeader = (idx === 0 ? "الصورة 1" : (idx === 1 ? "الصورة 2" : "الصورة 3"));
+                imagesHtml += `<div class="pdf-image-card"><div class="img-label">${columnHeader}</div>`;
+                if (imgUrl && imgUrl.trim() !== "") {
+                    imagesHtml += `<img src="${imgUrl}" alt="صورة النشاط" crossorigin="anonymous" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%22%20height%3D%22100%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22%23ccc%22%3E%3Cpath%20d%3D%22M4%204h16v16H4V4zm2%202v12h12V6H6zm2%202h8v8H8V8zm2%202v4h4v-4h-4z%22%2F%3E%3C%2Fsvg%3E';">`;
+                } else {
+                    imagesHtml += `<div class="no-image"><i class="fas fa-image-slash"></i><br/>لا توجد صورة</div>`;
+                }
+                imagesHtml += `</div>`;
+            });
+            imagesHtml += `</div>`;
+            return `
+                <div style="font-family:'Tajawal','Segoe UI',sans-serif; direction:rtl;">
+                    <div class="pdf-header">
+                        <h3>تقرير النشاط التجاري</h3>
+                        <p>تم الإنشاء بواسطة نظام التسجيل الموحد</p>
+                    </div>
+                    ${fieldsHtml}
+                    ${imagesHtml}
+                    <div class="footer-pdf">تقرير رقم ${record.rowId || 'غير محدد'} - تم التصدير بتاريخ ${new Date().toLocaleString('ar-SA')}</div>
+                </div>
+            `;
+        }
+
+        // توليد PDF باستخدام html2pdf مع إعدادات مناسبة (حجم الصور مضمون 5×5 عبر CSS)
+        async function generatePDFFromRecord(record) {
+            if (!record) { alert('الرجاء اختيار سجل أولاً'); return; }
+            const container = document.getElementById('pdfReportContainer');
+            const reportHtml = buildReportHTML(record);
+            container.style.display = 'block';
+            container.innerHTML = reportHtml;
+
+            // انتظار تحميل جميع الصور (إن وجدت) لضمان ظهورها في PDF
+            const images = container.querySelectorAll('img');
+            const loadPromises = Array.from(images).map(img => {
+                if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+                return new Promise((resolve) => { img.onload = resolve; img.onerror = resolve; setTimeout(resolve, 2000); });
+            });
+            await Promise.all(loadPromises);
+            
+            // خيارات html2pdf: نضبط الهوامش وحجم الورق
+            const opt = {
+                margin: [0.5, 0.5, 0.5, 0.5],
+                filename: `تقرير_نشاط_${record.meterNumber || 'سجل'}_${Date.now()}.pdf`,
+                image: { type: 'jpeg', quality: 0.95 },
+                html2canvas: { scale: 2, letterRendering: true, useCORS: true, logging: false },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+            try {
+                await html2pdf().set(opt).from(container).save();
+            } catch (err) {
+                console.error("PDF error:", err);
+                alert("حدث خطأ أثناء إنشاء PDF، تأكد من اتصال الإنترنت لعرض الصور.");
+            } finally {
+                container.style.display = 'none';
+                container.innerHTML = '';
+            }
+        }
+
+        // مستمع أزرار جلب البيانات وتوليد PDF
+        fetchBtn.addEventListener('click', fetchSheetData);
+        generateBtn.addEventListener('click', async () => {
+            const selectedIdx = recordSelect.value;
+            if (selectedIdx === null || allRecords.length === 0) { alert('لا توجد سجلات، قم بجلب البيانات أولاً'); return; }
+            const record = allRecords[parseInt(selectedIdx)];
+            if (!record) return;
+            // إظهار مؤقت تحميل
+            const originalText = generateBtn.innerHTML;
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> جاري تحضير PDF...';
+            await generatePDFFromRecord(record);
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = originalText;
+        });
+    })();
+</script>
+</body>
+</html>
